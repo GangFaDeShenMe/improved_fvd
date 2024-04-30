@@ -10,7 +10,7 @@ class ImprovedFVD:
     The result is calculated when accessing ``self.result`` attribute.
 
     LaTeX:
-    ``a_n(t)=\alpha\{V[ΔX^{jq}_n(t)]-V_n(t)\}-\lambda_1\frac{d\vartheta_n(t)}{dt}+\lambda2\frac{d\phi_n(t)}{dt}``
+    ``a_n(t)=\alpha\{V[ΔX^{jq}_n(t)]-V_n(t)\}-\(\lambda_1\frac{|\vartheta_n(t)-\vartheta_n(t-1)|}{\Delta t_{t,t-1}}+\lambda_2\frac{|\phi_n(t)-\phi_n(t-1)|}{\Delta t_{t,t-1}}\)``
 
     Based on Eq. ``(4)``, but we replaced ``\(\lambda_1\frac{d\vartheta_n(t)}{dt}+\lambda_2\frac{d\phi_n(t)}{dt}\)``
     with ``\(\lambda_1\frac{|\vartheta_n(t)-\vartheta_n(t-1)|}{\Delta t_{t,t-1}}+\lambda_2\frac{|\phi_n(t)-\phi_n(t-1)|}{\Delta t_{t,t-1}}\)``,
@@ -36,24 +36,26 @@ class ImprovedFVD:
             v_2: float,
             c_1: float,
             c_2: float,
-            p_2: float,
-            p_3: float,
-            q_2: float,
-            q_3: float,
-            s_2: float,
-            s_3: float,
 
             current_car_current_frame: "CurrentCar",
             current_lane_front_cars_current_frame: List["CurrentLaneFrontCar"],
 
-            frame_time_diff: float,
+            fps: float,
 
             current_car_last_frame: "CurrentCar",
             current_lane_front_cars_last_frame: List["CurrentLaneFrontCar"],
 
             p_1: float = 1,
+            p_2: float = 0,
+            p_3: float = 0,
+
             q_1: float = 1,
+            q_2: float = 0,
+            q_3: float = 0,
+
             s_1: float = 1,
+            s_2: float = 0,
+            s_3: float = 0,
 
             left_front_car_current_frame: "LeftFrontCar" = None,
             right_front_car_current_frame: "RightFrontCar" = None,
@@ -61,19 +63,14 @@ class ImprovedFVD:
             left_front_car_last_frame: "LeftFrontCar" = None,
             right_front_car_last_frame: "RightFrontCar" = None,
     ):
-        """
-
-        :param current_car_current_frame:
-        :param left_front_car_current_frame:
-        :param right_front_car_current_frame:
-        :param current_lane_front_cars_current_frame:
-        :param args: ...
-        """
         if not left_front_car_current_frame and not right_front_car_current_frame:
+            p_1 = 1
             p_2 = 0
             p_3 = 0
+            q_1 = 1
             q_2 = 0
             q_3 = 0
+            s_1 = 1
             s_2 = 0
             s_3 = 0
         elif not left_front_car_current_frame and right_front_car_current_frame:
@@ -103,7 +100,8 @@ class ImprovedFVD:
         self.right_front_car_current_frame = right_front_car_current_frame
         self.current_lane_front_cars_current_frame = current_lane_front_cars_current_frame
 
-        self.frame_time_diff = frame_time_diff
+        self.fps = fps
+        self.frame_time_diff = 1 / fps
 
         self.current_car_last_frame = current_car_last_frame
         self.left_front_car_last_frame = left_front_car_last_frame
@@ -162,10 +160,12 @@ class ImprovedFVD:
 
         """
 
-        def __init__(self, speed: float, x: float, y: float):
+        def __init__(self, speed: float, x: float, y: float, width: float, length: float, ):
             self.speed = speed
             self.x = x
             self.y = y
+            self.width = width
+            self.length = length
 
     class CurrentCar(CarBase):
         def __init__(self, **kwargs):
@@ -203,14 +203,13 @@ class ImprovedFVD:
         :param length
         """
 
-        def __init__(self, current_car, width: float, length: float, **kwargs):
+        def __init__(self, current_car, **kwargs):
             super().__init__(**kwargs)
-            self.width = width
-            self.length = length
 
             self.b = abs(current_car.y - self.y)
             """ The lateral distance """
 
+            # self.delta_x = abs((current_car.x + current_car.length / 2) - (self.x + self.length / 2))
             self.delta_x = abs(current_car.x - self.x)
             """ The longitudinal distance """
 
@@ -276,8 +275,8 @@ class ImprovedFVD:
         :return:
         """
         return self.q_1 * current_lane_front_cars[0].theta + \
-               self.q_2 * left_front_car.theta if left_front_car else 0 + \
-                                                                      self.q_3 * right_front_car.theta if right_front_car else 0
+            (self.q_2 * left_front_car.theta if left_front_car else 0) + \
+            (self.q_3 * right_front_car.theta if right_front_car else 0)
 
     def __weighted_visual_angle_current_frame(self):
         return self.__weighted_visual_angle(
@@ -305,8 +304,8 @@ class ImprovedFVD:
         :return:
         """
         return self.s_1 * current_lane_front_cars[0].varphi + \
-               self.s_2 * left_front_car.varphi if left_front_car else 0 + \
-               self.s_3 * right_front_car.varphi if right_front_car else 0
+            (self.s_2 * left_front_car.varphi if left_front_car else 0) + \
+            (self.s_3 * right_front_car.varphi if right_front_car else 0)
 
     def __weighted_offset_angle_current_frame(self):
         return self.__weighted_offset_angle(

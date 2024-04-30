@@ -6,8 +6,8 @@ from improved_fvd import ImprovedFVD
 s2 = 0.1, s3 = 0.1, γ = η = 0.5 
 """
 
-current_car_current_frame = ImprovedFVD.CurrentCar(speed=10, x=5, y=3)
-current_car_last_frame = ImprovedFVD.CurrentCar(speed=10, x=4.67, y=3)
+current_car_current_frame = ImprovedFVD.CurrentCar(speed=10, x=5, y=3, width=1.6, length=5,)
+current_car_last_frame = ImprovedFVD.CurrentCar(speed=10, x=4.67, y=3, width=1.6, length=5,)
 
 current_lane_front_cars_current_frame = [
     ImprovedFVD.CurrentLaneFrontCar(width=1.6, length=5, y=3 + 0.5, x=5 + 10, speed=10, beta=6 / 7, current_car=current_car_current_frame),
@@ -55,7 +55,7 @@ improved_fvd = ImprovedFVD(
     right_front_car_last_frame=right_lane_front_car_last_frame,
     current_lane_front_cars_last_frame=current_lane_front_cars_last_frame,
 
-    frame_time_diff=1/30
+    fps=1 / 30
 )
 
 print(improved_fvd.result)
